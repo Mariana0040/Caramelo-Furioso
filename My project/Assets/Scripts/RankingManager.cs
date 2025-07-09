@@ -1,6 +1,5 @@
-// RankingManager.cs (VERSÃO FINAL CORRIGIDA)
+// RankingManager.cs (VERSÃO FINAL CORRIGIDA E OTIMIZADA)
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 using Firebase;
 using Firebase.Database;
@@ -10,18 +9,28 @@ using System.Linq;
 
 public class RankingManager : MonoBehaviour
 {
-    [Header("UI do Jogo (Conforme sua Hierarquia)")]
+    [Header("UI do Jogo")]
     public GameObject gameOverPanel;
-    public TextMeshProUGUI rankingText;
     public GameObject nameEntryPanel;
     public TextMeshProUGUI[] nameLetters;
     public RectTransform cursor;
+    // <<< ALTERAÇÃO 1: Adicionando o campo para o texto do score >>>
+    public TextMeshProUGUI scoreDisplayText; // Arraste o texto do score aqui!
 
-    [Header("UI de Teste")]
-    public GameObject testPanel;
-    public TMP_InputField scoreInputField;
+    [Header("UI do Ranking Visual")]
+    public GameObject entradaRankingPrefab;
+    public Transform containerDaLista;
 
-    // ... (variáveis internas permanecem as mesmas)
+    [Header("Sprites das Barras de Ranking")]
+    public Sprite spriteOuro;
+    public Sprite spritePrata;
+    public Sprite spriteBronze;
+    public Sprite spritePadrao;
+
+    [Header("Configurações de Teste")]
+    public int scoreParaTeste = 5000;
+
+    // Variáveis internas
     private int playerScore;
     private DatabaseReference dbReference;
     private List<ScoreEntry> topScores = new List<ScoreEntry>();
@@ -31,142 +40,149 @@ public class RankingManager : MonoBehaviour
     private const string ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private bool isRankingLoaded = false;
 
-    // O resto do script é o mesmo...
     void Start()
     {
-        Debug.Log("RankingManager: Iniciando...");
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
-#if UNITY_EDITOR
-        if (testPanel != null) testPanel.SetActive(true);
-#else
-        if (testPanel != null) testPanel.SetActive(false);
-#endif
-        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
+
+        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task =>
+        {
             var dependencyStatus = task.Result;
             if (dependencyStatus == DependencyStatus.Available)
             {
                 dbReference = FirebaseDatabase.DefaultInstance.RootReference;
-                LoadRanking();
+                LoadRanking(true); // Carrega o ranking e inicia o jogo
             }
-            else { Debug.LogError($"RankingManager: Falha nas dependências do Firebase: {dependencyStatus}"); }
+            else { Debug.LogError($"Falha nas dependências do Firebase: {dependencyStatus}"); }
         });
     }
 
-    void Update()
-    {
-        if (!isEnteringName) return;
-        HandleNameEntryInput();
-    }
-
-    public void TestGameOverWithInputField()
-    {
-        if (int.TryParse(scoreInputField.text, out int scoreFromInput))
-        {
-            Debug.LogWarning($"--- MODO DE TESTE: Ativando Game Over com pontuação: {scoreFromInput} ---");
-            ShowGameOver(scoreFromInput);
-        }
-        else { Debug.LogError($"'{scoreInputField.text}' não é um número válido!"); }
-    }
-
-    // =================================================================
-    // AQUI ESTÁ A CORREÇÃO
-    // =================================================================
     public void ShowGameOver(int finalScore)
     {
-        Debug.Log($"ShowGameOver chamado com a pontuação: {finalScore}");
         playerScore = finalScore;
-
-        if (testPanel != null) testPanel.SetActive(false);
         gameOverPanel.SetActive(true);
 
-        // LÓGICA DE VERIFICAÇÃO REESCRITA E MAIS SEGURA
-        bool isHighScore = false;
-        if (topScores.Count < 10)
+        // <<< ALTERAÇÃO 2: Atualiza o texto do score na tela de nome >>>
+        if (scoreDisplayText != null)
         {
-            // Se houver menos de 10 scores, qualquer pontuação nova entra no ranking.
-            isHighScore = true;
-            Debug.Log("Verificação: Menos de 10 scores no ranking. É um high score!");
-        }
-        else
-        {
-            // Se o ranking estiver cheio, compare com a menor pontuação.
-            int lowestScoreInTop10 = topScores.Last().score;
-            Debug.Log($"Verificação: O ranking está cheio. Comparando {finalScore} com a menor pontuação {lowestScoreInTop10}.");
-            if (finalScore > lowestScoreInTop10)
-            {
-                isHighScore = true;
-            }
+            scoreDisplayText.text = finalScore.ToString();
         }
 
-        // Agora o resto da lógica funciona como esperado
+        bool isHighScore = topScores.Count < 10 || finalScore > topScores.Last().score;
+
         if (isHighScore)
         {
-            Debug.Log("Resultado: Pontuação alta! Mostrando painel de nome.");
             StartNameEntry();
         }
         else
         {
-            Debug.Log("Resultado: Pontuação baixa. Escondendo painel de nome.");
             nameEntryPanel.SetActive(false);
+            UpdateRankingUI();
         }
     }
-    // =================================================================
-    // FIM DA CORREÇÃO
-    // =================================================================
 
-    // O resto do script é o mesmo...
-    #region Funções de Suporte
-    void StartNameEntry()
-    {
-        nameEntryPanel.SetActive(true);
-        isEnteringName = true;
-        currentLetter = 0;
-        currentName = new char[] { 'A', 'A', 'A' };
-        UpdateNameUI();
-    }
+    // <<< ALTERAÇÃO 3: Lógica de atualização otimista >>>
     void FinalizeNameEntry()
     {
         isEnteringName = false;
         nameEntryPanel.SetActive(false);
         string finalName = new string(currentName);
+
+        // 1. Cria a nova entrada de score
         ScoreEntry newScore = new ScoreEntry(finalName, playerScore);
+
+        // 2. Salva no Firebase (isso vai rodar em segundo plano)
         string key = dbReference.Child("scores").Push().Key;
         dbReference.Child("scores").Child(key).SetRawJsonValueAsync(JsonUtility.ToJson(newScore));
         Debug.Log($"Salvando no Firebase: Nome='{finalName}', Pontuação={playerScore}");
-        LoadRanking();
+
+        // 3. ATUALIZAÇÃO OTIMISTA: Adiciona na lista local e atualiza a UI imediatamente!
+        topScores.Add(newScore);
+        // Reordena a lista local pela pontuação, do maior para o menor
+        topScores = topScores.OrderByDescending(s => s.score).ToList();
+        // Garante que a lista não tenha mais de 10 entradas
+        if (topScores.Count > 10)
+        {
+            topScores = topScores.GetRange(0, 10);
+        }
+
+        // 4. Mostra o resultado na tela na hora!
+        UpdateRankingUI();
     }
-    void HandleNameEntryInput()
+
+    // <<< ALTERAÇÃO 4: Pequena mudança para carregar e iniciar o jogo >>>
+    void LoadRanking(bool startGameOnLoad = false)
     {
-        if (Input.GetKeyDown(KeyCode.RightArrow)) { currentLetter = (currentLetter + 1) % 3; UpdateCursorPosition(); }
-        if (Input.GetKeyDown(KeyCode.LeftArrow)) { currentLetter = (currentLetter - 1 + 3) % 3; UpdateCursorPosition(); }
-        if (Input.GetKeyDown(KeyCode.UpArrow)) { ChangeCharacter(1); }
-        if (Input.GetKeyDown(KeyCode.DownArrow)) { ChangeCharacter(-1); }
-        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return)) { FinalizeNameEntry(); }
-    }
-    void LoadRanking()
-    {
-        Debug.Log("Carregando ranking do Firebase...");
-        dbReference.Child("scores").OrderByChild("score").LimitToLast(10).GetValueAsync().ContinueWithOnMainThread(task => {
-            if (task.IsFaulted) { Debug.LogError("Erro ao carregar o ranking: " + task.Exception); }
-            else if (task.IsCompleted)
+        dbReference.Child("scores").OrderByChild("score").LimitToLast(10).GetValueAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsFaulted) { return; }
+            if (task.IsCompleted)
             {
                 DataSnapshot snapshot = task.Result;
                 topScores.Clear();
-                if (snapshot.Exists)
-                {
-                    foreach (var childSnapshot in snapshot.Children) { topScores.Add(JsonUtility.FromJson<ScoreEntry>(childSnapshot.GetRawJsonValue())); }
-                }
-                topScores.Reverse();
+                if (snapshot.Exists) { foreach (var childSnapshot in snapshot.Children) { topScores.Add(JsonUtility.FromJson<ScoreEntry>(childSnapshot.GetRawJsonValue())); } }
+                topScores.Reverse(); // Firebase retorna em ordem crescente, então revertemos
                 isRankingLoaded = true;
-                Debug.Log($"Ranking carregado com sucesso! {topScores.Count} scores encontrados.");
-                if (gameOverPanel.activeSelf) UpdateRankingUI();
+
+                // Se for a primeira carga, inicia o "Game Over"
+                if (startGameOnLoad)
+                {
+                    ShowGameOver(scoreParaTeste);
+                }
+                // Se o painel já estiver ativo, só atualiza a UI
+                else if (gameOverPanel.activeSelf)
+                {
+                    UpdateRankingUI();
+                }
             }
         });
     }
+
     void UpdateRankingUI()
     {
-        rankingText.text = "RANKING\n\n";
-        for (int i = 0; i < topScores.Count; i++) { rankingText.text += $"{i + 1}. {topScores[i].name} - {topScores[i].score}\n"; }
+        if (containerDaLista == null) return;
+        foreach (Transform item in containerDaLista) Destroy(item.gameObject);
+
+        for (int i = 0; i < topScores.Count; i++)
+        {
+            GameObject novaLinha = Instantiate(entradaRankingPrefab, containerDaLista);
+            UnityEngine.UI.Image barraImagem = novaLinha.GetComponent<UnityEngine.UI.Image>();
+
+            if (i == 0) barraImagem.sprite = spriteOuro;
+            else if (i == 1) barraImagem.sprite = spritePrata;
+            else if (i == 2) barraImagem.sprite = spriteBronze;
+            else barraImagem.sprite = spritePadrao;
+
+            TMP_Text textoNome = novaLinha.transform.Find("NomeJogador").GetComponent<TMP_Text>();
+            TMP_Text textoPontuacao = novaLinha.transform.Find("Pontuacao").GetComponent<TMP_Text>();
+
+            textoNome.text = topScores[i].name;
+            textoPontuacao.text = topScores[i].score.ToString();
+        }
+    }
+
+    #region Código Inalterado (Controle de Nome)
+    void OnGUI()
+    {
+        if (!isEnteringName) return;
+        Event e = Event.current;
+        if (e.type == EventType.KeyDown) HandleNameEntryInput(e.keyCode);
+    }
+    void HandleNameEntryInput(KeyCode key)
+    {
+        if (key == KeyCode.RightArrow) { currentLetter = (currentLetter + 1) % 3; UpdateCursorPosition(); }
+        else if (key == KeyCode.LeftArrow) { currentLetter = (currentLetter - 1 + 3) % 3; UpdateCursorPosition(); }
+        else if (key == KeyCode.UpArrow) { ChangeCharacter(1); }
+        else if (key == KeyCode.DownArrow) { ChangeCharacter(-1); }
+        else if (key == KeyCode.Space || key == KeyCode.Return) { FinalizeNameEntry(); }
+    }
+    void StartNameEntry()
+    {
+        UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
+        nameEntryPanel.SetActive(true);
+        isEnteringName = true;
+        currentLetter = 0;
+        currentName = new char[] { 'A', 'A', 'A' };
+        UpdateNameUI();
     }
     void ChangeCharacter(int direction)
     {
@@ -189,5 +205,7 @@ public class RankingManager : MonoBehaviour
             nameLetters[currentLetter].transform.position.z
         );
     }
+    [System.Serializable]
+    public class ScoreEntry { public string name; public int score; public ScoreEntry(string name, int score) { this.name = name; this.score = score; } }
     #endregion
 }
