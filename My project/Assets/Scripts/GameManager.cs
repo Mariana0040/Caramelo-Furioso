@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using UnityEngine.SceneManagement; // novo
 
 public class GameManager : MonoBehaviour
 {
@@ -31,12 +32,17 @@ public class GameManager : MonoBehaviour
     [Header("Configurações de Dificuldade")]
     [SerializeField] private int sequenceLength = 4;
     [SerializeField] private int shufflesAfterXCorrects = 3;
+    public int PlayerScore { get { return playerScore; } } // <<< NOVO: Propriedade pública para ler a pontuação
 
     [Header("Configurações de Tempo")]
     [SerializeField] private float initialTime = 30f;
     [SerializeField] private float timeBonusOnCorrect = 5f;
     [SerializeField] private float timePenaltyOnWrong = 10f;
     [SerializeField] private Slider timerBar;
+
+    // <<< NOVO: Adicione esta variável no Inspector >>>
+    [Header("Configurações de Cena")]
+    [SerializeField] private string gameOverSceneName = "GameOver"; // Coloque o nome exato da sua cena aqui
 
     [SerializeField] private TextMeshProUGUI comboText;
     [SerializeField] private float comboAnimationSpeed = 5f;
@@ -416,7 +422,13 @@ public class GameManager : MonoBehaviour
         if (isGameOver) return;
         isGameOver = true;
         Debug.Log("FIM DE JOGO!");
-              
+        // <<< MUDANÇA PRINCIPAL AQUI >>>
+        // 1. Salva a pontuação em PlayerPrefs com a chave "finalScore"
+        PlayerPrefs.SetInt("finalScore", playerScore);
+
+        // 2. (Opcional mas recomendado) Garante que os dados sejam escritos no disco imediatamente.
+        PlayerPrefs.Save();
+
         if (dogAnimator != null)
         {
             dogAnimator.PlayGameOverAnimation();
@@ -425,6 +437,7 @@ public class GameManager : MonoBehaviour
         {
             CameraShake.Instance.StartShake(gameOverShakeDuration, gameOverShakeMagnitude);
         }
+
     }
 
     #endregion

@@ -154,10 +154,10 @@ RectTransform:
   - {fileID: 1850362952}
   m_Father: {fileID: 913977980}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.43749997, y: 0.27222842}
-  m_AnchorMax: {x: 0.725, y: 0.3944457}
-  m_AnchoredPosition: {x: 0.3999939, y: 12.199997}
-  m_SizeDelta: {x: 0.435997, y: 17.02}
+  m_AnchorMin: {x: 0.45937505, y: 0.3222223}
+  m_AnchorMax: {x: 0.7093751, y: 0.51666665}
+  m_AnchoredPosition: {x: -0.6000061, y: -3.300003}
+  m_SizeDelta: {x: 12.435997, y: 4.0200005}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &108056916
 MonoBehaviour:
@@ -731,10 +731,10 @@ RectTransform:
   - {fileID: 1930200258}
   m_Father: {fileID: 913977980}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.43749997, y: 0.27222842}
-  m_AnchorMax: {x: 0.725, y: 0.3944457}
-  m_AnchoredPosition: {x: 0.3999939, y: -19.800003}
-  m_SizeDelta: {x: 0.435997, y: 17.02}
+  m_AnchorMin: {x: 0.45937505, y: 0.09388889}
+  m_AnchorMax: {x: 0.7093751, y: 0.27777773}
+  m_AnchoredPosition: {x: 0, y: 2.6131973}
+  m_SizeDelta: {x: 0, y: -5.2264}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!95 &544535916
 Animator:
@@ -897,10 +897,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 913977980}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 104.8, y: -38.3}
-  m_SizeDelta: {x: 130.23, y: 96.345}
+  m_AnchorMin: {x: 0.628125, y: 0}
+  m_AnchorMax: {x: 1, y: 0.57222474}
+  m_AnchoredPosition: {x: 4.300003, y: 0.19999695}
+  m_SizeDelta: {x: 11.229996, y: -6.654999}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &763484370
 MonoBehaviour:
@@ -916,7 +916,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -2367,7 +2367,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b91b3df96df2d0439afe7d09588e4fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nomeDaCenaDoJogo: GameScene
+  nomeDaCenaDoJogo: SceneGamePlay
   creditsPanel: {fileID: 1998486986}
 --- !u!4 &1906992647
 Transform:

@@ -24,29 +24,42 @@ public class GameOverManager : MonoBehaviour
     public TextMeshProUGUI[] top3ScoreTexts;
 
     [Header("Configurações")]
-    public int scoreParaTeste = 10000;
     public string menuSceneName = "Menu";
 
     // Variáveis internas
     private DatabaseReference dbReference;
+    private int finalScore; // <<< NOVO: Variável para guardar a pontuação lida
 
     void Start()
     {
+        // <<< MUDANÇA PRINCIPAL AQUI >>>
+        // 1. Lê a pontuação que foi salva em PlayerPrefs.
+        // O segundo parâmetro (0) é um valor padrão caso a chave "finalScore" não seja encontrada.
+        finalScore = PlayerPrefs.GetInt("finalScore", 0);
+
+        // 2. Atualiza o texto na tela com a pontuação lida.
+        if (scoreDisplayText != null)
+        {
+            scoreDisplayText.text = finalScore.ToString();
+        }
+
         gameOverPanel.SetActive(false);
-        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
+        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task =>
+        {
             if (task.Result == DependencyStatus.Available)
             {
                 dbReference = FirebaseDatabase.DefaultInstance.RootReference;
                 LoadTop3AndStartGame();
             }
         });
-
         // <<< MUDANÇA: Conecta a função ao botão via código >>>
         if (confirmButton != null)
         {
             confirmButton.onClick.AddListener(FinalizeNameEntry);
         }
     }
+
+    
 
     // <<< REMOVIDO: O método Update() não é mais necessário para input >>>
 
@@ -74,11 +87,12 @@ public class GameOverManager : MonoBehaviour
             return;
         }
 
-        ScoreEntry newScore = new ScoreEntry(finalName, scoreParaTeste);
+        ScoreEntry newScore = new ScoreEntry(finalName, finalScore);
 
         string key = dbReference.Child("scores").Push().Key;
 
-        dbReference.Child("scores").Child(key).SetRawJsonValueAsync(JsonUtility.ToJson(newScore)).ContinueWithOnMainThread(task => {
+        dbReference.Child("scores").Child(key).SetRawJsonValueAsync(JsonUtility.ToJson(newScore)).ContinueWithOnMainThread(task =>
+        {
             if (task.IsCompleted)
             {
                 SceneManager.LoadScene(menuSceneName);
@@ -89,14 +103,14 @@ public class GameOverManager : MonoBehaviour
     #region Código de Setup Inalterado
     void LoadTop3AndStartGame()
     {
-        dbReference.Child("scores").OrderByChild("score").LimitToLast(3).GetValueAsync().ContinueWithOnMainThread(task => {
+        dbReference.Child("scores").OrderByChild("score").LimitToLast(3).GetValueAsync().ContinueWithOnMainThread(task =>
+        {
             if (task.IsCompleted)
             {
                 List<ScoreEntry> top3 = new List<ScoreEntry>();
                 if (task.Result.Exists) { foreach (var childSnapshot in task.Result.Children) { top3.Add(JsonUtility.FromJson<ScoreEntry>(childSnapshot.GetRawJsonValue())); } }
                 top3.Reverse();
                 UpdateTop3UI(top3);
-                ShowGameOverScreen(scoreParaTeste);
             }
         });
     }

@@ -1,6 +1,8 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI; // Use se o rosto for Image (UI)
+
 
 public class DogAnimator : MonoBehaviour
 {
@@ -20,6 +22,10 @@ public class DogAnimator : MonoBehaviour
     [SerializeField] private float timePerFrame = 0.15f;
     [SerializeField] private float zoomDuration = 1.5f;
     [SerializeField] private Vector3 endScale = new Vector3(50, 50, 1);
+
+    [Header("Configurações de Transição de Cena")]
+    [Tooltip("O nome exato da sua cena de Game Over.")]
+    [SerializeField] private string gameOverSceneName = "GameOver"; // <<< NOVO
 
     private Coroutine animationCoroutine;
     public AudioSource audioSource;
@@ -76,6 +82,10 @@ public class DogAnimator : MonoBehaviour
         transform.localScale = endScale;
         if (dogSpriteRenderer != null) dogSpriteRenderer.sprite = gameOverFrames[gameOverFrames.Length - 1];
 
-        Debug.Log("Animação de Game Over finalizada!");
+        Debug.Log("Animação de Game Over finalizada! Salvando pontuação e trocando de cena.");
+        SceneManager.LoadScene("GameOver");
+
+
     }
+
 }
